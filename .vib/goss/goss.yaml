@@ -1,0 +1,30 @@
+file:
+  /home/yugabyte/bin/yb-tserver:
+    exists: true
+    mode: "0755"
+command:
+  ysqlsh-create:
+    exec: "ysqlsh -h yb-tserver-0.yb-tservers -c 'CREATE DATABASE vmwaretest'"
+    exit-status: 0
+    stdout:
+      - "CREATE DATABASE"
+    timeout: 20000
+  ysqlsh-drop:
+    exec: "sleep 20 && ysqlsh -h yb-tserver-0.yb-tservers -c 'DROP DATABASE vmwaretest'"
+    exit-status: 0
+    stdout:
+      - "DROP DATABASE"
+    timeout: 30000
+  ycqlsh-auth:
+    exec: "ycqlsh yb-tserver-0.yb-tservers -e 'SELECT now() FROM system.local;'"
+    exit-status: 0
+    stdout:
+      - "now"
+    timeout: 10000
+  curl-master:
+    exec: "curl http://$YB_MASTER_UI_PORT_7000_TCP_ADDR:7000"
+    exit-status: 0
+    stdout:
+      - "LEADER"
+    timeout: 10000
+

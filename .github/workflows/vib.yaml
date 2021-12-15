@@ -12,13 +12,53 @@ jobs:
       CSP_API_URL: https://console.cloud.vmware.com   
       CSP_API_TOKEN: ${{ secrets.CSP_API_TOKEN }}    
     steps:
+      - name: Checkout
+        id: vib_checkout
+        uses: actions/checkout@v2
+        with:
+          path: yugabyte
       - name: Print Information
         id: vib_info
         run: |
           echo Starting VMware Image Builder
           echo Processing SHA: ${{ github.sha }}
           echo Github Repository: ${{ github.repository }}
-          echo Will download file: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
-
-    
-
+          echo Chart folder is located at: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
+      - name: Send VIB Pipeline
+        id: vib_validate_pipeline
+        run: |        
+          awk '{sub("{HELM_CHART}", uri)}1' uri="$CHART_URI" $PIPELINE > pipeline.json
+          echo "Updating values..."
+          echo "We will send this pipeline:"
+          cat pipeline.json
+          EXECUTION_GRAPH_URI=$(./yugabyte/.vib/scripts/vib-send.sh --pipeline=pipeline.json)          
+          echo "Created new execution graph: ${EXECUTION_GRAPH_URI}"
+          echo ::set-output name=execution_graph_id::"$EXECUTION_GRAPH_URI"
+        env: 
+          PIPELINE: ./yugabyte/.vib/validate.json
+          CHART_URI: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
+      - name: Static Analysis
+        id: vib_lint
+        run: |
+          echo "Execution graph id: ${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}"
+          ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}" --phase=PACKAGE --action=linter-packaging --interval=15 --timeout=1800
+      - name: Vulnerability Scanning
+        id: vib_trivy
+        run: |
+          echo "Execution graph id: ${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}"
+          ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}" --phase=VERIFY --action=trivy --interval=15 --timeout=1800
+      - name: Download Execution Graph
+        id: vib_download
+        if: always()
+        run: |
+          ./yugabyte/.vib/scripts/vib-download.sh --url="${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}" --output=outputs
+      - name: Archive Execution Graph
+        id: vib_archive
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: static-analysis-assets.zip
+          path: |
+            outputs/execution_graph-${{ github.sha }}.json
+            outputs/execution_graph-${{ github.sha }}-report.json
+            outputs/**.txt

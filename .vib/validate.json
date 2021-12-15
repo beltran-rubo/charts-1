@@ -1,0 +1,70 @@
+{
+    "phases": {
+      "package": {
+        "context": {
+          "resources": {
+            "url": "{HELM_CHART}"
+          }
+        },
+        "actions": [
+          {
+            "action_id": "helm-package"
+          },              
+          {
+            "action_id": "linter-packaging",
+            "params": {
+              "kind": "HELM"
+            }
+          }
+        ]
+      },
+      "verify": {
+        "context": {
+          "resources": {
+            "url": "{HELM_CHART}",
+            "path": ".vib/"
+          },
+          "target_platform": {
+            "target_platform_id": "91d398a2-25c4-4cda-8732-75a3cfc179a1",
+            "size": {
+              "name": "L8",
+              "worker_nodes_instance_count": 3,
+              "master_nodes_instance_count": 1
+            }
+          }
+        },
+        "actions": [
+          {
+            "action_id": "trivy"
+          },
+          {
+            "action_id": "health-check",
+            "params": {
+              "endpoint": "lb-yb-master-ui-http-ui",
+              "app_protocol": "HTTP"
+            }
+          },
+          {
+            "action_id": "goss",
+            "params": {
+              "resources": {
+                "path": "/examples/yugabytedb/goss"
+              },
+              "config": {
+                "remote": {
+                  "workload": "sts-yb-tserver"
+                },
+                "wait": {
+                  "file": "goss-wait.yaml"
+                }
+              }
+            }
+          },
+          {
+            "action_id": "resilience-tests"
+          }
+        ]
+      }
+    }
+  }
+  
