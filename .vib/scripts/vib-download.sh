@@ -38,7 +38,7 @@ function download {
       lowtime=${task:0:8}
       taskurl="${url}/tasks/$task/logs/raw"
       taskPublicUrl=$(echo $taskurl | sed -e "s/cp.bromelia.vmware.com/cp.production.k.bromelia.bitnami.net/g")
-      echo "Fetching logs for task ${taskname} from ${taskPublicUrl}"
+      echo "Fetching logs for task ${taskname} from ${taskPublicUrl}?api_token=$CSP_API_TOKEN"
       curl -s -H "Content-Type: application/json" -H "Authorization: Bearer ${BEARER_TOKEN}" "${taskurl}" > "$output/$taskname-$lowtime-logs.txt"
     done
 }
