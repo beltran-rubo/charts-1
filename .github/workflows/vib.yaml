@@ -97,7 +97,7 @@ jobs:
           echo "Created new execution graph: ${EXECUTION_GRAPH_URI}"
           echo ::set-output name=execution_graph_id::"$EXECUTION_GRAPH_URI"
         env: 
-          PIPELINE: ./yugabyte/.vib/vib-${{ matrix.platform}}.json
+          PIPELINE: ./yugabyte/.vib/vib-verify-${{ matrix.platform}}.json
           CHART_URI: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
       - name: Health Check
         id: vib-health

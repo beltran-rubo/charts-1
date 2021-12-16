@@ -26,7 +26,7 @@
             "path": ".vib/"
           },
           "target_platform": {
-            "target_platform_id": "91d398a2-25c4-4cda-8732-75a3cfc179a1",
+            "target_platform_id": "274c2d11-f590-4dea-9a53-04be37f17bdf",
             "size": {
               "name": "L8",
               "worker_nodes_instance_count": 3,
