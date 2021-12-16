@@ -27,11 +27,7 @@
         },
         "actions": [
           {
-            "action_id": "health-check",
-            "params": {
-              "endpoint": "lb-yb-master-ui-http-ui",
-              "app_protocol": "HTTP"
-            }
+            "action_id": "resilience-tests"
           }
         ]
       }
