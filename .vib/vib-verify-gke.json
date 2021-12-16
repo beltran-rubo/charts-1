@@ -27,19 +27,10 @@
         },
         "actions": [
           {
-            "action_id": "goss",
+            "action_id": "health-check",
             "params": {
-              "resources": {
-                "path": "/.vib/goss"
-              },
-              "config": {
-                "remote": {
-                  "workload": "sts-yb-tserver"
-                },
-                "wait": {
-                  "file": "goss-wait.yaml"
-                }
-              }
+              "endpoint": "lb-yb-master-ui-http-ui",
+              "app_protocol": "HTTP"
             }
           }
         ]
