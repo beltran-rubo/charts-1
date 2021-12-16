@@ -3,7 +3,8 @@
       "package": {
         "context": {
           "resources": {
-            "url": "{HELM_CHART}"
+            "url": "{HELM_CHART}",
+            "path": "/stable/yugabyte"
           }
         },
         "actions": [
