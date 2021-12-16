@@ -36,7 +36,23 @@
         },
         "actions": [
           {
-            "action_id": "trivy"
+            "action_id": "goss",
+            "params": {
+              "resources": {
+                "path": "/examples/yugabytedb/goss"
+              },
+              "config": {
+                "remote": {
+                  "workload": "sts-yb-tserver"
+                },
+                "wait": {
+                  "file": "goss-wait.yaml"
+                }
+              }
+            }
+          },
+          {
+            "action_id": "resilience-tests"
           }
         ]
       }
