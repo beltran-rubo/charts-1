@@ -30,7 +30,7 @@
             "action_id": "goss",
             "params": {
               "resources": {
-                "path": "/examples/yugabytedb/goss"
+                "path": "/.vib/goss"
               },
               "config": {
                 "remote": {
