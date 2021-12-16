@@ -67,7 +67,7 @@ jobs:
     needs: [vib-validate]
     strategy:
       matrix:
-        platform: [tkg-1.3.0-aws,tkg-1.4.0-vmc,gke,aks]
+        platform: [gke]
       fail-fast: false
     env:
       PIPELINE: ./yugabyte/.vib/vib-verify-${{ matrix.platform }}.json
@@ -87,7 +87,7 @@ jobs:
           echo Github Repository: ${{ github.repository }}
           echo Chart folder is located at: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
       - name: Send VIB Pipeline
-        id: vib_validate_pipeline
+        id: vib_verify_pipeline
         run: |        
           awk '{sub("{HELM_CHART}", uri)}1' uri="$CHART_URI" $PIPELINE > pipeline.json
           echo "Updating values..."
