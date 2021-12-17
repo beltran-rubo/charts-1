@@ -67,7 +67,7 @@ jobs:
     needs: [vib-validate]
     strategy:
       matrix:
-        platform: [gke]
+        platform: [gke,aks]
       fail-fast: false
     env:
       PIPELINE: ./yugabyte/.vib/vib-verify-${{ matrix.platform }}.json
