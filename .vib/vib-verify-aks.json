@@ -28,20 +28,7 @@
         },
         "actions": [
           {
-            "action_id": "goss",
-            "params": {
-              "resources": {
-                "path": "/.vib/goss"
-              },
-              "config": {
-                "remote": {
-                  "workload": "sts-yb-tserver"
-                },
-                "wait": {
-                  "file": "goss-wait.yaml"
-                }
-              }
-            }
+            "action_id": "resilience-tests"
           }
         ]
       }

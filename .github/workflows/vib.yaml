@@ -103,6 +103,11 @@ jobs:
         env: 
           PIPELINE: ./yugabyte/.vib/vib-verify-${{ matrix.platform}}.json
           CHART_URI: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
+      - name: Cluster Provisioning
+        id: vib-provisioning
+        run: |
+          echo "Execution graph id: ${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}"
+          ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}" --phase=VERIFY --action=provisioning --interval=30 --timeout=2800
       - name: Health Check
         id: vib-health
         run: |
