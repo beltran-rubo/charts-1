@@ -1,0 +1,5 @@
+storage:
+  master:
+    storageClass: default
+  tserver:
+    storageClass: default

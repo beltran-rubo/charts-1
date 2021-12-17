@@ -89,7 +89,11 @@ jobs:
       - name: Send VIB Pipeline
         id: vib_verify_pipeline
         run: |        
-          awk '{sub("{HELM_CHART}", uri)}1' uri="$CHART_URI" $PIPELINE > pipeline.json
+          awk '{sub("{HELM_CHART}", uri)}1' uri="$CHART_URI" $PIPELINE > pipeline-int.json
+          echo "Updating values..."
+          export CHART_VALUES=$(base64 ./yugabyte/.vib/chart-values.yaml)
+          awk '{sub("{CHART_VALUES}", values)}1' values="$CHART_VALUES" pipeline-int.json > pipeline.json
+          echo "We will send this pipeline:"          
           echo "Updating values..."
           echo "We will send this pipeline:"
           cat pipeline.json
