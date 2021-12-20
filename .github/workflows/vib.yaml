@@ -3,10 +3,10 @@ name: VMware Image Builder
 on:
   push:
     branches:
-    - master
+    - 2.9
   pull_request:
     branches:
-    - master
+    - 2.9
 jobs:
   vib-validate:
     runs-on: ubuntu-latest
