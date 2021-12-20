@@ -1,0 +1,45 @@
+{
+    "phases": {
+      "package": {
+        "context": {
+          "resources": {
+            "url": "{HELM_CHART}",
+            "path": "/stable/yugabyte"
+          }
+        },
+        "actions": [
+          {
+            "action_id": "helm-package"
+          },              
+          {
+            "action_id": "linter-packaging",
+            "params": {
+              "kind": "HELM"
+            }
+          }
+        ]
+      },
+      "verify": {
+        "context": {
+          "resources": {
+            "url": "{HELM_CHART}",
+            "path": ".vib/"
+          },
+          "target_platform": {
+            "target_platform_id": "91d398a2-25c4-4cda-8732-75a3cfc179a1",
+            "size": {
+              "name": "L8",
+              "worker_nodes_instance_count": 3,
+              "master_nodes_instance_count": 1
+            }
+          }
+        },
+        "actions": [
+          {
+            "action_id": "trivy"
+          }
+        ]
+      }
+    }
+  }
+  

@@ -1,0 +1,156 @@
+name: VMware Image Builder
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+jobs:
+  vib-validate:
+    runs-on: ubuntu-latest
+    env: 
+      VIB_PUBLIC_URL: https://cp.bromelia.vmware.com
+      CSP_API_URL: https://console.cloud.vmware.com   
+      CSP_API_TOKEN: ${{ secrets.CSP_API_TOKEN }}    
+    steps:
+      - name: Checkout
+        id: vib_checkout
+        uses: actions/checkout@v2
+        with:
+          path: yugabyte
+      - name: Print Information
+        id: vib_info
+        run: |
+          echo Starting VMware Image Builder
+          echo Processing SHA: ${{ github.sha }}
+          echo Github Repository: ${{ github.repository }}
+          echo Chart folder is located at: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
+      - name: Send VIB Pipeline
+        id: vib_validate_pipeline
+        # Sends an execution graph (validate.json) with two actions: linting and vulnerability scanning
+        # For this, it does use the utility shell scripts under .vib/scripts. This execution graph is saved 
+        # as an step output variable so it can be used by subsequent steps to verify the state of those actions.
+        run: |        
+          awk '{sub("{HELM_CHART}", uri)}1' uri="$CHART_URI" $PIPELINE > pipeline.json
+          echo "Updating values..."
+          echo "We will send this pipeline:"
+          cat pipeline.json
+          EXECUTION_GRAPH_URI=$(./yugabyte/.vib/scripts/vib-send.sh --pipeline=pipeline.json)          
+          echo "Created new execution graph: ${EXECUTION_GRAPH_URI}"
+          echo ::set-output name=execution_graph_id::"$EXECUTION_GRAPH_URI"
+        env: 
+          PIPELINE: ./yugabyte/.vib/validate.json
+          CHART_URI: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
+      - name: Static Analysis
+        id: vib_lint
+        run: |
+          echo "Execution graph id: ${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}"
+          ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}" --phase=PACKAGE --action=linter-packaging --interval=15 --timeout=1800
+      - name: Vulnerability Scanning
+        id: vib_trivy
+        run: |
+          echo "Execution graph id: ${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}"
+          ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}" --phase=VERIFY --action=trivy --interval=15 --timeout=1800
+      - name: Download Execution Graph
+        id: vib_download
+        # Loops over all the actions fetching and downloading their logs.
+        if: always()
+        run: |
+          ./yugabyte/.vib/scripts/vib-download.sh --url="${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}" --output=outputs
+      - name: Archive Execution Graph
+        id: vib_archive
+        # Uses the upload artifact github action so the action logs are stored and available on Github's UI.
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: static-analysis-assets.zip
+          path: |
+            outputs/execution_graph-${{ github.sha }}.json
+            outputs/execution_graph-${{ github.sha }}-report.json
+            outputs/**.txt
+  vib-k8s-verify:
+    runs-on: ubuntu-latest
+    needs: [vib-validate]
+    strategy:
+      matrix:
+        platform: [gke,aks]
+      fail-fast: false
+    env:
+      PIPELINE: ./yugabyte/.vib/vib-verify-${{ matrix.platform }}.json
+      VIB_PUBLIC_URL: https://cp.bromelia.vmware.com
+      CSP_API_URL: https://console.cloud.vmware.com
+      CSP_API_TOKEN: ${{ secrets.CSP_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          path: yugabyte
+      - name: Print Information
+        id: vib_info
+        run: |
+          echo Starting VMware Image Builder
+          echo Processing SHA: ${{ github.sha }}
+          echo Github Repository: ${{ github.repository }}
+          echo Chart folder is located at: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
+      - name: Send VIB Pipeline
+        id: vib_verify_pipeline
+        # Sends a verification pipeline to VIB. The name of the verification pipeline is parameterized 
+        # by the matrix defined in the strategy step of this job. Hence the pipeline sends to VIB depends on the 
+        # matrix element. For example for gke, the pipeline file will be vib-verify-gke.json 
+        # All pipelines sent contain three actions: Goss tests, Health Check and Resilience tests. 
+        # For sending the pipeline, it does use the utility shell scripts under .vib/scripts. The generated execution graph is saved 
+        # as an step output variable so it can be used by subsequent steps to verify the state of those actions.
+        run: |        
+          awk '{sub("{HELM_CHART}", uri)}1' uri="$CHART_URI" $PIPELINE > pipeline-int.json
+          echo "Updating values..."
+          export CHART_VALUES=$(base64 ./yugabyte/.vib/chart-values.yaml)
+          awk '{sub("{CHART_VALUES}", values)}1' values="$CHART_VALUES" pipeline-int.json > pipeline.json
+          echo "We will send this pipeline:"          
+          echo "Updating values..."
+          echo "We will send this pipeline:"
+          cat pipeline.json
+          EXECUTION_GRAPH_URI=$(./yugabyte/.vib/scripts/vib-send.sh --pipeline=pipeline.json)          
+          echo "Created new execution graph: ${EXECUTION_GRAPH_URI}"
+          echo ::set-output name=execution_graph_id::"$EXECUTION_GRAPH_URI"
+        env: 
+          PIPELINE: ./yugabyte/.vib/vib-verify-${{ matrix.platform}}.json
+          CHART_URI: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
+      - name: Cluster Provisioning
+        id: vib-provisioning
+        run: |
+          echo "Execution graph id: ${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}"
+          ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}" --phase=VERIFY --action=provisioning --interval=30 --timeout=2800
+      - name: Health Check
+        id: vib-health
+        run: |
+          echo "Execution graph id: ${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}"
+          ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}" --phase=VERIFY --action=health-check --interval=30 --timeout=2800
+      - name: Server Tests
+        id: vib-goss
+        run: |
+          echo "Execution graph id: ${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}"
+          ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}" --phase=VERIFY --action=goss --interval=30 --timeout=2800
+      - name: Resilience Tests
+        id: vib-resilience-tests
+        run: |
+          echo "Execution graph id: ${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}"
+          ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}" --phase=VERIFY --action=resilience-tests --interval=30 --timeout=2800
+      - name: Download Execution Graph
+        id: vib_download
+        # Loops over all the actions fetching and downloading their logs.
+        if: always()
+        run: |
+          ./yugabyte/.vib/scripts/vib-download.sh --url="${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}" --output=outputs-${{ matrix.platform }}
+      - name: Archive Execution Graph
+        id: vib_archive
+        # Uses the upload artifact github action so the action logs are stored and available on Github's UI.
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: static-analysis-assets-${{ matrix.platform }}.zip
+          path: |
+            outputs-${{ matrix.platform }}/execution_graph-${{ github.sha }}.json
+            outputs-${{ matrix.platform }}/execution_graph-${{ github.sha }}-report.json
+            outputs-${{ matrix.platform }}/**.txt

@@ -1,0 +1,37 @@
+{
+    "phases": {
+      "verify": {
+        "context": {
+          "resources": {
+            "url": "{HELM_CHART}",
+            "path": ".vib/"
+          },
+          "application": {
+            "kind": "HELM",
+            "details": {
+              "name": "yugabyte",
+              "version": "2.9.0",
+              "repository": {
+                "url": "https://charts.yugabyte.com"
+              }
+            },
+            "values": "{CHART_VALUES}"
+          }, 
+          "target_platform": {
+            "target_platform_id": "7b13a7bb-011c-474f-ad71-8152fc321b9e",
+            "size": {
+              "name": "L8",
+              "worker_nodes_instance_count": 3,
+              "master_nodes_instance_count": 1
+            }
+          }
+        },
+        "actions": [
+          {
+            "action_id": "resilience-tests"
+          }
+        ]
+      }
+    }
+  }
+  
