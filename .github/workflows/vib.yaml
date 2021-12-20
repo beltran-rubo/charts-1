@@ -1,9 +1,12 @@
 name: VMware Image Builder
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+    - master
   pull_request:
-
+    branches:
+    - master
 jobs:
   vib-validate:
     runs-on: ubuntu-latest
@@ -26,6 +29,9 @@ jobs:
           echo Chart folder is located at: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
       - name: Send VIB Pipeline
         id: vib_validate_pipeline
+        # Sends an execution graph (validate.json) with two actions: linting and vulnerability scanning
+        # For this, it does use the utility shell scripts under .vib/scripts. This execution graph is saved 
+        # as an step output variable so it can be used by subsequent steps to verify the state of those actions.
         run: |        
           awk '{sub("{HELM_CHART}", uri)}1' uri="$CHART_URI" $PIPELINE > pipeline.json
           echo "Updating values..."
@@ -49,11 +55,13 @@ jobs:
           ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}" --phase=VERIFY --action=trivy --interval=15 --timeout=1800
       - name: Download Execution Graph
         id: vib_download
+        # Loops over all the actions fetching and downloading their logs.
         if: always()
         run: |
           ./yugabyte/.vib/scripts/vib-download.sh --url="${{ steps.vib_validate_pipeline.outputs.execution_graph_id }}" --output=outputs
       - name: Archive Execution Graph
         id: vib_archive
+        # Uses the upload artifact github action so the action logs are stored and available on Github's UI.
         if: always()
         uses: actions/upload-artifact@v2
         with:
@@ -88,6 +96,12 @@ jobs:
           echo Chart folder is located at: https://github.com/${{ github.repository }}/archive/${{ github.sha }}.zip
       - name: Send VIB Pipeline
         id: vib_verify_pipeline
+        # Sends a verification pipeline to VIB. The name of the verification pipeline is parameterized 
+        # by the matrix defined in the strategy step of this job. Hence the pipeline sends to VIB depends on the 
+        # matrix element. For example for gke, the pipeline file will be vib-verify-gke.json 
+        # All pipelines sent contain three actions: Goss tests, Health Check and Resilience tests. 
+        # For sending the pipeline, it does use the utility shell scripts under .vib/scripts. The generated execution graph is saved 
+        # as an step output variable so it can be used by subsequent steps to verify the state of those actions.
         run: |        
           awk '{sub("{HELM_CHART}", uri)}1' uri="$CHART_URI" $PIPELINE > pipeline-int.json
           echo "Updating values..."
@@ -125,11 +139,13 @@ jobs:
           ./yugabyte/.vib/scripts/vib-check.sh --url="${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}" --phase=VERIFY --action=resilience-tests --interval=30 --timeout=2800
       - name: Download Execution Graph
         id: vib_download
+        # Loops over all the actions fetching and downloading their logs.
         if: always()
         run: |
           ./yugabyte/.vib/scripts/vib-download.sh --url="${{ steps.vib_verify_pipeline.outputs.execution_graph_id }}" --output=outputs-${{ matrix.platform }}
       - name: Archive Execution Graph
         id: vib_archive
+        # Uses the upload artifact github action so the action logs are stored and available on Github's UI.
         if: always()
         uses: actions/upload-artifact@v2
         with:
