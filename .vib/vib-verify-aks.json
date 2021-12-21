@@ -1,5 +1,24 @@
 {
     "phases": {
+      "package": {
+        "context": {
+          "resources": {
+            "url": "{HELM_CHART}",
+            "path": "/stable/yugabyte"
+          }
+        },
+        "actions": [
+          {
+            "action_id": "helm-package"
+          },              
+          {
+            "action_id": "linter-packaging",
+            "params": {
+              "kind": "HELM"
+            }
+          }
+        ]
+      },
       "verify": {
         "context": {
           "resources": {
@@ -7,14 +26,6 @@
             "path": ".vib/"
           },
           "application": {
-            "kind": "HELM",
-            "details": {
-              "name": "yugabyte",
-              "version": "2.9.0",
-              "repository": {
-                "url": "https://charts.yugabyte.com"
-              }
-            },
             "values": "{CHART_VALUES}"
           }, 
           "target_platform": {
